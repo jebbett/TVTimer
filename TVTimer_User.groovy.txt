@@ -17,7 +17,7 @@
  *
  *  v0.1 - Beta semi-stable version
  *  v0.2 - Recurring quota fix attempt
- * 
+ *  v0.3 - Fixed bug turning light back off
  *
  */
  
@@ -196,6 +196,8 @@ def checkQuota() {
         	// Do this if ok to use quota
             state.startTimer = (now()/1000).toInteger()
             parent.switchOn(app.label)
+            //return to exit before stopQuota
+            return
     	}
     }
 	stopQuota()
