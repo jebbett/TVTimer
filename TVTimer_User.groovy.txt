@@ -1,16 +1,37 @@
-//Child Version 0.13
+/**
+ *  TVTimer
+ *
+ *  Copyright 2016 Jake Tebbett
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ * 
+ * VERSION CONTROL - USER
+ * #########################
+ *
+ *  v0.1 - Beta semi-stable version
+ *  v0.2 - Recurring quota fix attempt
+ * 
+ *
+ */
+ 
 definition(
-    name: "Quota User",
+    name: "TVTimer User",
     namespace: "jebbett",
     author: "Jake Tebbett",
     description: "Quota Management App",
     category: "My Apps",
 
-    // the parent option allows you to specify the parent app in the form <namespace>/<app name>
-    parent: "jebbett:Quota Manager",
-    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
-    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+    parent: "jebbett:TVTimer Manager",
+    iconUrl: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png",
+    iconX2Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png",
+    iconX3Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png")
 
 
 preferences {
@@ -57,25 +78,25 @@ def mainPage() {
     
     section("Allowed Times") {
             input "dayOfWeek1", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
-			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+			options: ['All Week','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Mon to Fri','Sat to Sun','Sun to Thurs','Fri to Sat']
             if(dayOfWeek1){
             	input "timeS1", "time", title: "Start Time", required: true
             	input "timeF1", "time", title: "Finish Time", required: true
             
             input "dayOfWeek2", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
-			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+			options: ['All Week','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Mon to Fri','Sat to Sun','Sun to Thurs','Fri to Sat']
             if(dayOfWeek2){
             	input "timeS2", "time", title: "Start Time", required: true
             	input "timeF2", "time", title: "Finish Time", required: true
             }
             input "dayOfWeek3", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
-			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+			options: ['All Week','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Mon to Fri','Sat to Sun','Sun to Thurs','Fri to Sat']
             if(dayOfWeek3){
             	input "timeS3", "time", title: "Start Time", required: true
             	input "timeF3", "time", title: "Finish Time", required: true
             }
             input "dayOfWeek4", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
-			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+			options: ['All Week','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Mon to Fri','Sat to Sun','Sun to Thurs','Fri to Sat']
             if(dayOfWeek4){
             	input "timeS4", "time", title: "Start Time", required: true
             	input "timeF4", "time", title: "Finish Time", required: true
@@ -93,7 +114,7 @@ def mainPage() {
             	input "timeF6", "time", title: "Finish Time", required: true
             }
             input "dayOfWeek7", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
-			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+			options: ['All Week','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Mon to Fri','Sat to Sun','Sun to Thurs','Fri to Sat']
             if(dayOfWeek7){
             	input "timeS7", "time", title: "Start Time", required: true
             	input "timeF7", "time", title: "Finish Time", required: true
@@ -155,13 +176,15 @@ def switchOn(evt) {
 
 // Make sure both quota available and an eligable timeband is active.
 def checkQuota() {
-
+	
+    // Check if quota is due for a reset
+    if(parent.recurringQuotaReset()){
+    	parent.logWriter ("[QUOTA] Recurring Quota Reset Checked")
+    }
+    
 	// Unschedule any in progress schedules
 	unschedule("checkQuota")
     
-    // Check if quota is due for a reset
-    parent.recurringQuotaReset()
-	
     // Update quota
     updateQuota()
     
@@ -173,7 +196,6 @@ def checkQuota() {
         	// Do this if ok to use quota
             state.startTimer = (now()/1000).toInteger()
             parent.switchOn(app.label)
-            return
     	}
     }
 	stopQuota()
@@ -246,19 +268,19 @@ def okTime(aDate, aStart, aFinish) {
 
 Calendar cal = Calendar.getInstance()
 
-	if(cal.get(Calendar.DAY_OF_WEEK)==1 && aDate in ['All Week','Weekends','Sunday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+	if(cal.get(Calendar.DAY_OF_WEEK)==1 && aDate in ['All Week','Sat to Sun','Sunday','Sun to Thurs'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
         return true}
-    else if(cal.get(Calendar.DAY_OF_WEEK)==2 && aDate in ['All Week','Weekdays','Monday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+    else if(cal.get(Calendar.DAY_OF_WEEK)==2 && aDate in ['All Week','Mon to Fri','Monday','Sun to Thurs'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
         return true}
-    else if(cal.get(Calendar.DAY_OF_WEEK)==3 && aDate in ['All Week','Weekdays','Tuesday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+    else if(cal.get(Calendar.DAY_OF_WEEK)==3 && aDate in ['All Week','Mon to Fri','Tuesday','Sun to Thurs'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
         return true}
-    else if(cal.get(Calendar.DAY_OF_WEEK)==4 && aDate in ['All Week','Weekdays','Wednesday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+    else if(cal.get(Calendar.DAY_OF_WEEK)==4 && aDate in ['All Week','Mon to Fri','Wednesday','Sun to Thurs'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
         return true}
-    else if(cal.get(Calendar.DAY_OF_WEEK)==5 && aDate in ['All Week','Weekdays','Thursday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+    else if(cal.get(Calendar.DAY_OF_WEEK)==5 && aDate in ['All Week','Mon to Fri','Thursday','Sun to Thurs'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
         return true}
-    else if(cal.get(Calendar.DAY_OF_WEEK)==6 && aDate in ['All Week','Weekdays','Friday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+    else if(cal.get(Calendar.DAY_OF_WEEK)==6 && aDate in ['All Week','Mon to Fri','Friday','Fri to Sat'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
         return true}
-    else if(cal.get(Calendar.DAY_OF_WEEK)==7&& aDate in ['All Week','Weekends','Saturday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+    else if(cal.get(Calendar.DAY_OF_WEEK)==7&& aDate in ['All Week','Sat to Sun','Saturday','Fri to Sat'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
         return true}
     else{
     	return false}
@@ -308,6 +330,6 @@ def returnQuota () {
 
 def resetQuota(){
 	state.currentSecs = quotaMins * 60
-    parent.logWriter("[QUOTA] Quota Reset")
+    parent.logWriter("[QUOTA] Quota Reset to %{state.currentSecs}")
     return
 }

@@ -1,14 +1,35 @@
-//Parent Version 0.8
+/**
+ *  TVTimer
+ *
+ *  Copyright 2016 Jake Tebbett
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ * 
+ * VERSION CONTROL - MANAGER
+ * #########################
+ *
+ *  v0.1 - Beta semi-stable version
+ *  v0.2 - Recurring quota fix attempt
+ * 
+ *
+ */
 
 definition(
-    name: "Quota Manager",
+    name: "TVTimer Manager",
     namespace: "jebbett",
     author: "Jake Tebbbett",
-    description: "Quota Management App",
+    description: "TV/Device Quota Management App",
     category: "My Apps",
-    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
-    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+    iconUrl: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png",
+    iconX2Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png",
+    iconX3Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png")
 
 
 preferences {
@@ -37,15 +58,9 @@ def mainPage() {
          
         section() {
         
-            app(name: "childapp", appName: "Quota User", namespace: "jebbett", title: "Create New User", multiple: true)
-        	href(name: "advSets",
-                 title: "Advanced Settings",
-                 required: false,
-                 page: "settingsPage")
+            app(name: "childapp", appName: "TVTimer User", namespace: "jebbett", title: "Create New User", multiple: true)
+        	href(name: "advSets", title: "Advanced Settings", required: false, page: "settingsPage")
         }
-        
-        
-          
     }
 }
 
@@ -215,16 +230,16 @@ def recurringQuotaReset() {
        	state.lastReset = timeToday("00:00",location.timeZone).time
     }
     
-    // Check to see if 
+    // Check to see if quota due for reset
     def thisIsToday = timeToday("00:00",location.timeZone).time
     if ((timeToday("00:00",location.timeZone).time) >= (state.lastReset + (resetDays * 86400000))){
         childApps.each { child ->
     		child.resetQuota()
         }    
     	state.lastReset = timeToday("00:00",location.timeZone).time
+        logWriter("[QUOTA] Have Reset Recurring Quota")
     }else{    
         logWriter("[QUOTA] Last Quota Reset Was: ${thisIsToday}, currently time is ${now()} next one due ${state.lastReset + (resetDays * 86400000)}.")
-        //logWriter("[QUOTA] DATE TEST: ${state.lastReset.format("yyyy-MM-dd")}")
     }
-	return
+    return true
 }
