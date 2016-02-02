@@ -1,0 +1,313 @@
+//Child Version 0.13
+definition(
+    name: "Quota User",
+    namespace: "jebbett",
+    author: "Jake Tebbett",
+    description: "Quota Management App",
+    category: "My Apps",
+
+    // the parent option allows you to specify the parent app in the form <namespace>/<app name>
+    parent: "jebbett:Quota Manager",
+    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+
+
+preferences {
+    page name: "mainPage", title: "User Details", install: false, uninstall: true
+}
+
+def installed() {
+    log.debug "Installed with settings: ${settings}"
+    initialize()
+}
+
+def updated() {
+    log.debug "Updated with settings: ${settings}"
+    unschedule()
+    initialize()
+}
+
+def initialize() {
+    // If no quota set, set it.
+    if (state.currentSecs==null){
+    	resetQuota()
+    }
+}
+
+
+// main page to select lights, the action, and turn on/off times
+def mainPage() {
+    dynamicPage(name: "mainPage", uninstall: true, install: true) {
+     	
+        section() {
+                label title: "Name", defaultValue: app.label, required: true
+                if(state.currentSecs != null){paragraph "${app.label} has about ${(state.currentSecs/60).toInteger()} minutes remaining until next reset."}
+        }
+    
+    section("User Settings") {
+            input(name: "quotaMins", type: "number", title: "Quota Minutes", defaultValue: "60", required:true)
+            input "swResetQ", "bool", title: "Force quota reset", required: false, defaultValue: false, submitOnChange: true, refreshAfterSelection: true
+            if (swResetQ){state.currentSecs = quotaMins * 60}
+            input(name: "pin" , title: "PIN Code", type: "number", range: "0000..9999", required: true)
+            paragraph "PIN should be four digits. Shorter PINs will be padded with leading zeroes. (42 becomes 0042)"
+           
+                   
+    }
+    
+    section("Allowed Times") {
+            input "dayOfWeek1", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
+			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+            if(dayOfWeek1){
+            	input "timeS1", "time", title: "Start Time", required: true
+            	input "timeF1", "time", title: "Finish Time", required: true
+            
+            input "dayOfWeek2", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
+			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+            if(dayOfWeek2){
+            	input "timeS2", "time", title: "Start Time", required: true
+            	input "timeF2", "time", title: "Finish Time", required: true
+            }
+            input "dayOfWeek3", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
+			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+            if(dayOfWeek3){
+            	input "timeS3", "time", title: "Start Time", required: true
+            	input "timeF3", "time", title: "Finish Time", required: true
+            }
+            input "dayOfWeek4", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
+			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+            if(dayOfWeek4){
+            	input "timeS4", "time", title: "Start Time", required: true
+            	input "timeF4", "time", title: "Finish Time", required: true
+            }
+            input "dayOfWeek5", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
+			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+            if(dayOfWeek5){
+            	input "timeS5", "time", title: "Start Time", required: true
+            	input "timeF5", "time", title: "Finish Time", required: true
+            }
+            input "dayOfWeek6", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
+			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+            if(dayOfWeek6){
+            	input "timeS6", "time", title: "Start Time", required: true
+            	input "timeF6", "time", title: "Finish Time", required: true
+            }
+            input "dayOfWeek7", "enum", title: "Day of the week:", multiple: false, submitOnChange: true, required: false,
+			options: ['All Week','Weekdays','Weekend','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+            if(dayOfWeek7){
+            	input "timeS7", "time", title: "Start Time", required: true
+            	input "timeF7", "time", title: "Finish Time", required: true
+            }
+            }
+    	}	
+    }
+}
+
+
+// #################################### INPUTS ####################################
+//Returns the PIN padded with zeroes to 4 digits
+private String getPIN(){
+	return settings.pin.value.toString().padLeft(4,'0')
+}
+
+// Check Quota on correct PIN
+def codeEntryHandler(evt){
+    parent.logWriter ("[PINPAD] Caught code entry event! ${evt.value.value}")
+    def codeEntered = evt.value as String
+    def data = evt.data as String
+    def correctCode = getPIN()
+    def mode = ''
+    
+    if (data == '0') mode = 'off'		//Off
+    else if (data == '3') mode = 'on'	//Away
+    else if (data == '1') mode = 'on'	//Stay
+    else if (data == '2') mode = 'on'	//Night
+    else {
+    	parent.logWriter ("[PINPAD] Unexpected arm mode sent by keypad!: "+data)
+        return []
+        }    
+    if (codeEntered == correctCode && mode== "on") {
+    	parent.logWriter ("[PINPAD] Correct PIN entered - Turning On")
+        parent.keypad.acknowledgeArmRequest(data)
+        parent.keypad?.setArmedAway()
+        checkQuota()       
+    }
+    else if (codeEntered == correctCode && mode== "off") {
+    	parent.logWriter ("[PINPAD] Correct PIN entered - Turning Off.")
+        parent.keypad.acknowledgeArmRequest(data)
+        stopQuota()
+    }
+    else
+    {
+    	parent.logWriter ("[PINPAD] Invalid PIN")
+    	parent.keypad.sendInvalidKeycodeResponse()
+    }
+}
+
+// Check Quota on switch
+def switchOn(evt) {
+	if(evt.value == "on"){checkQuota()}
+    else if (evt.value == "off"){stopQuota()}
+}
+
+
+// #################################### CHECKS EVERYTHING ####################################
+
+// Make sure both quota available and an eligable timeband is active.
+def checkQuota() {
+
+	// Unschedule any in progress schedules
+	unschedule("checkQuota")
+    
+    // Check if quota is due for a reset
+    parent.recurringQuotaReset()
+	
+    // Update quota
+    updateQuota()
+    
+    // Check if quota should start deductions
+    def availableQuota = state.currentSecs.toInteger()
+	if(availableQuota > 0  && !parent.swOff){
+    	
+        if(okTimeSlot()){
+        	// Do this if ok to use quota
+            state.startTimer = (now()/1000).toInteger()
+            parent.switchOn(app.label)
+            return
+    	}
+    }
+	stopQuota()
+}
+
+// #################################### UPDATES QUOTA ####################################
+
+// Work out quota balances
+def updateQuota() {
+	if(state.startTimer == null){
+    
+    	parent.logWriter ("[QUOTA] No quota being used currently - do nothing.")
+        
+    }else{
+    	
+        // Only deduct time if "Free Time" isn't set.
+        if(!parent.swFree) {state.currentSecs = state.currentSecs - ((now()/1000).toInteger() - state.startTimer)}
+        
+        //Reset start time
+        state.startTimer = null
+        
+        // Tidy to zero if SmartThings has over deducted 
+        if (state.currentSecs < 0) {state.currentSecs = 0}
+        
+        parent.logWriter ("[QUOTA] Remaining seconds left: $state.currentSecs")       
+	}
+}
+
+// #################################### CHECK ELIGABLE TIME ####################################
+
+def okTimeSlot() {	
+    
+	if(!dayOfWeek1) {
+    	scheduleReCheck('23:59:59')
+    	return true}
+        
+    if(okTime(dayOfWeek1, timeS1, timeF1)) {
+        scheduleReCheck(timeF1)
+    	return true}
+    
+    if(okTime(dayOfWeek2, timeS2, timeF2)) {
+    	scheduleReCheck(timeF2)
+    	return true}
+    
+    if(okTime(dayOfWeek3, timeS3, timeF3)) {
+    	scheduleReCheck(timeF3)
+    	return true}
+    
+    if(okTime(dayOfWeek4, timeS4, timeF4)) {
+    	scheduleReCheck(timeF4)
+    	return true}
+    
+    if(okTime(dayOfWeek5, timeS5, timeF5)) {
+    	scheduleReCheck(timeF5)
+        return true}
+    
+    if(okTime(dayOfWeek6, timeS6, timeF6)) {
+    	scheduleReCheck(timeF6)
+        return true}
+    
+    if(okTime(dayOfWeek7, timeS7, timeF7)) {
+    	scheduleReCheck(timeF7)
+        return true}
+        
+    return false
+}
+
+// Check active timeband
+def okTime(aDate, aStart, aFinish) {
+
+Calendar cal = Calendar.getInstance()
+
+	if(cal.get(Calendar.DAY_OF_WEEK)==1 && aDate in ['All Week','Weekends','Sunday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+        return true}
+    else if(cal.get(Calendar.DAY_OF_WEEK)==2 && aDate in ['All Week','Weekdays','Monday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+        return true}
+    else if(cal.get(Calendar.DAY_OF_WEEK)==3 && aDate in ['All Week','Weekdays','Tuesday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+        return true}
+    else if(cal.get(Calendar.DAY_OF_WEEK)==4 && aDate in ['All Week','Weekdays','Wednesday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+        return true}
+    else if(cal.get(Calendar.DAY_OF_WEEK)==5 && aDate in ['All Week','Weekdays','Thursday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+        return true}
+    else if(cal.get(Calendar.DAY_OF_WEEK)==6 && aDate in ['All Week','Weekdays','Friday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+        return true}
+    else if(cal.get(Calendar.DAY_OF_WEEK)==7&& aDate in ['All Week','Weekends','Saturday'] && now() >= timeToday(aStart,location.timeZone).time && now() <= timeToday(aFinish,location.timeZone).time){
+        return true}
+    else{
+    	return false}
+}
+
+
+// #################################### SCHEDULE RECHECK ####################################
+
+def scheduleReCheck(timeEnd) {
+
+	// Number of seconds in quota and to end of timeband
+    def secsToEndBand = ((timeToday(timeEnd,location.timeZone).time/1000)+60)-(now() /1000).toInteger()+1
+    def secsInQuota = state.currentSecs
+
+    //schedule next recheck
+	if(secsToEndBand >= secsInQuota){
+    	runIn(secsInQuota, checkQuota, [overwrite: true])
+       	parent.logWriter ("[SCHEDULE] Quota available less than time band end, so will re-check in $secsInQuota seconds.")
+    }else{
+    	runIn(secsToEndBand, checkQuota, [overwrite: true])
+    	parent.logWriter ("[SCHEDULE] Timeband will be hit before quota runs out, , so will re-check in $secsToEndBand seconds.")	
+    }
+}
+
+
+// #################################### ADHOC SCRIPTS ####################################
+
+def stopQuota() {
+    parent.logWriter ("[STATE] Stop command sent.")
+    unschedule("checkQuota")
+	updateQuota()
+    parent.switchOff()
+    parent.keypad?.setDisarmed()
+}
+
+
+// #################################### ADHOC SCRIPTS ####################################
+
+// To return quota to parent app, for phone app.
+def returnQuota () {
+	if(state.currentSecs != null){
+	def availableQuota = (state.currentSecs/60).toInteger()
+    return availableQuota}
+    else
+    {return 0}
+}
+
+def resetQuota(){
+	state.currentSecs = quotaMins * 60
+    parent.logWriter("[QUOTA] Quota Reset")
+    return
+}

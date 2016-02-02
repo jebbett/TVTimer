@@ -1,0 +1,230 @@
+//Parent Version 0.8
+
+definition(
+    name: "Quota Manager",
+    namespace: "jebbett",
+    author: "Jake Tebbbett",
+    description: "Quota Management App",
+    category: "My Apps",
+    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+
+
+preferences {
+	page(name: "mainPage")
+    page(name: "balancePage")
+    page(name: "settingsPage")
+}
+
+def mainPage() {
+
+	if (state.debugLogging == null) 	{ state.debugLogging = false }
+    
+    dynamicPage(name: "mainPage", install: true, uninstall: true,submitOnChange: true) {
+        
+        section() {	
+            input "swOff", "bool", title: "All Off", required: false, defaultValue: false, submitOnChange: true, refreshAfterSelection: true
+            input "swFree", "bool", title: "Free Time", required: false, defaultValue: false, submitOnChange: true,refreshAfterSelection: true
+         	
+            href(name: "usersBal",
+                 title: "Users Balance Remaining",
+                 required: false,
+                 page: "balancePage",
+                 description: "view users remaining balances")
+        }
+        section(title: "Users") {}
+         
+        section() {
+        
+            app(name: "childapp", appName: "Quota User", namespace: "jebbett", title: "Create New User", multiple: true)
+        	href(name: "advSets",
+                 title: "Advanced Settings",
+                 required: false,
+                 page: "settingsPage")
+        }
+        
+        
+          
+    }
+}
+
+def settingsPage(){
+	dynamicPage(name: "balancePage", install: false, uninstall: false, submitOnChange: true) {
+        
+		section("Inputs") {
+        	input "trigger1", "capability.switch", title:"TESTING ONLY", multiple: false, required: false
+            input "keypad", "capability.lockCodes", title: "Keypad Input", multiple: false, required: false
+            input "output1", "capability.switch", title:"Switch To Control", multiple: false, required: false
+            input(name: "swOffIn" , title: "Delay Switch Off (Seconds)", type: "number", range: "1..300", defaultValue: "10", required: true)
+            input(name: "resetDays", type: "number", title: "Reset Quota After (Days)", defaultValue: "1", range: "1..31", required: true, description: "days")
+        }
+        section("Automatically Stop On Low Power (Optional)") {     
+            input(name: "meter", type: "capability.powerMeter", title: "When This Meter:", required: false, multiple: false, description: null)
+            input(name: "meterPwr", type: "number", title: "Drops Below This Many Watts:", defaultValue: "5", required: true, description: "watts")
+			input(name: "lowPwrOffIn" , title: "For This Many Seconds:", type: "number", range: "1..3600", defaultValue: "30", required: true)
+        }
+        
+        // Enables logging debug only when enabled
+        section(title: "Debug Logging") {
+       		paragraph "If you experiencing issues please enable logging to help troubleshoot"
+            input "debugLogging", "bool", title: "Debug Logging", required: false, defaultValue: false, refreshAfterSelection: true
+            if (debugLogging) { 
+            	state.debugLogging = true 
+                logWriter("Debug Logging is ${state.debugLogging.toString().toUpperCase()}")
+            }
+            else { 
+            	state.debugLogging = false 
+            	logWriter("Debug Logging is ${state.debugLogging.toString().toUpperCase()}")    
+            }
+    	}
+	}
+}
+
+def balancePage(){
+	dynamicPage(name: "balancePage", install: false, uninstall: false, submitOnChange: false) {
+        
+        section(title: "Balance Remaining") {
+        	childApps.each { child ->
+            	def childQuota = child.returnQuota()
+    			paragraph "${child.label} has ${childQuota} minutes remaining"
+    		}
+		}
+	}
+}
+
+
+// #################################### SYSTEM ####################################
+def installed() {
+    log.debug "Installed with settings: ${settings}"
+    initialize()
+}
+
+def updated() {
+    log.debug "Updated with settings: ${settings}"
+    unsubscribe()
+    initialize()
+}
+
+def initialize() {
+    subscribe(trigger1, "switch", childSwitch)
+    subscribe(keypad, "codeEntered", childCodeEntryHandler)
+    subscribe(meter, "power", meterHandler)
+    
+    // State Apps that are configured
+    log.debug "There are ${childApps.size()} child smartapps"
+    childApps.each {child ->
+        log.debug "Child app: ${child.label}"
+    }
+    
+    // If "All Off" stop everything
+    if(swOff){stopAllQuotas()}
+    
+}
+
+// #################################### LOGGING ####################################
+private def logWriter(value) {
+	if (state.debugLogging) {
+        log.debug "${value}"
+    }	
+}
+
+// #################################### INPUTS ####################################
+
+// Pass test switch to all child apps - THIS CAN BE DELETED IF SWITCH REMOVED
+def childSwitch(evt) {
+childApps.each { child ->
+	if(child.label == "Jake"){child.switchOn(evt)}
+    }
+	return
+}
+
+// Pass keypad entry to all child apps to proccess
+def childCodeEntryHandler(evt){
+	childApps.each { child ->
+    	child.codeEntryHandler(evt)
+    }
+	return
+}
+
+// #################################### OUTPUTS ####################################
+
+//Switch on and cancel any pending switch offs
+def switchOn(childLabel) {
+	settings."output1"?.on()
+    logWriter("[OUTPUT] Switch turned on")
+    // cancel all the other child apps
+    childApps.each { child ->
+    	if (child.label != childLabel){
+           	child.stopQuota()
+        }
+    }
+    unschedule("switchOffInX")
+}
+
+//Ask to switch off in 10 seconds
+def switchOff() {
+	logWriter("[OUTPUT] Switching off if not cancelled")
+	runIn(swOffIn, switchOffInX, [overwrite: true])
+}
+
+//Actually switch off
+def switchOffInX() {
+	settings."output1"?.off()
+    logWriter("[OUTPUT] Switched turned off")
+}
+
+
+
+// #################################### LOW POWER ####################################
+
+// Check if power drops below defined value, if it does turn off and cancel quota in 30 seconds.
+def meterHandler(evt) {
+	def meterValue = evt.value as double
+	def thresholdValue = meterPwr as int
+	if (meterValue < thresholdValue) {
+		logWriter("${meter} reported energy consumption below ${meterPwr} @ ${meterValue}.")
+		runIn(lowPwrOffIn, switchOffLowPwr, [overwrite: true])
+	}
+    else
+    {
+    	logWriter("${meter} reported energy consumption above ${meterPwr} @ ${meterValue}.")
+    	unschedule("switchOffLowPwr")
+    }
+}
+
+// Low power off triggered.
+def switchOffLowPwr() {
+	stopAllQuotas()	
+}
+
+// Stop all quota's on all apps
+def stopAllQuotas(){
+	childApps.each { child ->
+    	child.stopQuota()
+    }
+	return
+}
+
+// #################################### RESET QUOTAS ####################################
+
+// Recurring Quota Reset
+def recurringQuotaReset() {
+	// Set quota checkpoint
+	if (state.lastReset == null){
+       	state.lastReset = timeToday("00:00",location.timeZone).time
+    }
+    
+    // Check to see if 
+    def thisIsToday = timeToday("00:00",location.timeZone).time
+    if ((timeToday("00:00",location.timeZone).time) >= (state.lastReset + (resetDays * 86400000))){
+        childApps.each { child ->
+    		child.resetQuota()
+        }    
+    	state.lastReset = timeToday("00:00",location.timeZone).time
+    }else{    
+        logWriter("[QUOTA] Last Quota Reset Was: ${thisIsToday}, currently time is ${now()} next one due ${state.lastReset + (resetDays * 86400000)}.")
+        //logWriter("[QUOTA] DATE TEST: ${state.lastReset.format("yyyy-MM-dd")}")
+    }
+	return
+}
