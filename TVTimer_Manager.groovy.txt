@@ -18,7 +18,7 @@
  *
  *  v0.1 - Beta semi-stable version
  *  v0.2 - Recurring quota fix attempt
- * 
+ * 	v0.3 - Move checking quota reset due to app, manager still re-sets other apps
  *
  */
 
@@ -28,9 +28,9 @@ definition(
     author: "Jake Tebbbett",
     description: "TV/Device Quota Management App",
     category: "My Apps",
-    iconUrl: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png",
-    iconX2Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png",
-    iconX3Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png")
+    iconUrl: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256-01.png",
+    iconX2Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256-01.png",
+    iconX3Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256-01.png")
 
 
 preferences {
@@ -225,22 +225,22 @@ def stopAllQuotas(){
 // #################################### RESET QUOTAS ####################################
 
 // Recurring Quota Reset
-def recurringQuotaReset() {
+def recurringQuotaReset(childApp) {
 	// Set quota checkpoint
+	
+    
+    childApps.each { child ->
+    	if (child.label != childLabel){
+           	child.resetQuota()
+        }
+    }
+    
+    state.lastReset = timeToday("00:00",location.timeZone).time
+}
+
+def checkQuotaReset(){
 	if (state.lastReset == null){
        	state.lastReset = timeToday("00:00",location.timeZone).time
     }
-    
-    // Check to see if quota due for reset
-    def thisIsToday = timeToday("00:00",location.timeZone).time
-    if ((timeToday("00:00",location.timeZone).time) >= (state.lastReset + (resetDays * 86400000))){
-        childApps.each { child ->
-    		child.resetQuota()
-        }    
-    	state.lastReset = timeToday("00:00",location.timeZone).time
-        logWriter("[QUOTA] Have Reset Recurring Quota")
-    }else{    
-        logWriter("[QUOTA] Last Quota Reset Was: ${thisIsToday}, currently time is ${now()} next one due ${state.lastReset + (resetDays * 86400000)}.")
-    }
-    return true
+	return state.lastReset
 }

@@ -20,6 +20,7 @@
  *  v0.2 - Recurring quota fix attempt
  *  v0.3 - Fixed bug turning light back off
  *	v0.4 - Recurring quota fix attempt #2
+ *	v0.5 - Recurring quota - moved check from parent to child app - fix attempt #3
  */
  
 definition(
@@ -30,9 +31,9 @@ definition(
     category: "My Apps",
 
     parent: "jebbett:TVTimer Manager",
-    iconUrl: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png",
-    iconX2Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png",
-    iconX3Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256.png")
+    iconUrl: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256-01.png",
+    iconX2Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256-01.png",
+    iconX3Url: "https://raw.githubusercontent.com/jebbett/TVTimer/master/tvtimer256-01.png")
 
 
 preferences {
@@ -178,10 +179,18 @@ def switchOn(evt) {
 // Make sure both quota available and an eligable timeband is active.
 def checkQuota() {
 	
-    // Check if quota is due for a reset
-    if(parent.recurringQuotaReset()){
+    // Check to see if quota due for reset
+    def thisIsToday = timeToday("00:00",location.timeZone).time
+    def thisIsWhenDue = parent.checkQuotaReset()
     
-    
+    if ((timeToday("00:00",location.timeZone).time) >= (thisIsWhenDue + (parent.resetDays * 86400000))){
+    	resetQuota()
+    	parent.recurringQuotaReset(app.label)
+    	parent.logWriter("[QUOTA] Have Reset Recurring Quota")
+    }else{
+        parent.logWriter("[QUOTA] Last Quota Reset Was: ${thisIsToday}, currently time is ${now()} next one due ${thisIsWhenDue + (parent.resetDays * 86400000)}.")
+    }
+        
 	// Unschedule any in progress schedules
 	unschedule("checkQuota")
     
@@ -201,7 +210,6 @@ def checkQuota() {
     	}
     }
 	stopQuota()
-    }
 }
 
 // #################################### UPDATES QUOTA ####################################
