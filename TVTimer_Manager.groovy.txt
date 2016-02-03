@@ -135,7 +135,7 @@ def initialize() {
     
     // If "All Off" stop everything
     if(swOff){stopAllQuotas()}
-    
+    state.lastReset = "145439640000"
 }
 
 // #################################### LOGGING ####################################
@@ -242,5 +242,5 @@ def checkQuotaReset(){
 	if (state.lastReset == null){
        	state.lastReset = timeToday("00:00",location.timeZone).time
     }
-	return state.lastReset
+	return state.lastReset as long
 }

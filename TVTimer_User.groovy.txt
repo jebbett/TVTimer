@@ -180,10 +180,14 @@ def switchOn(evt) {
 def checkQuota() {
 	
     // Check to see if quota due for reset
-    def thisIsToday = timeToday("00:00",location.timeZone).time
-    def thisIsWhenDue = parent.checkQuotaReset()
+    def thisIsToday = timeToday("00:00",location.timeZone).time as long
+    def thisIsWhenDue = parent.checkQuotaReset() as long
+    def resetDayz = parent.resetDays*86400000 as long
     
-    if ((timeToday("00:00",location.timeZone).time) >= (thisIsWhenDue + (parent.resetDays * 86400000))){
+    parent.logWriter("[QUOTA] $thisIsToday , $thisIsWhenDue , $resetDayz")
+    
+    
+    if ((timeToday("00:00",location.timeZone).time) >= (thisIsWhenDue + resetDayz)){
     	resetQuota()
     	parent.recurringQuotaReset(app.label)
     	parent.logWriter("[QUOTA] Have Reset Recurring Quota")
@@ -341,6 +345,6 @@ def returnQuota () {
 
 def resetQuota(){
 	state.currentSecs = quotaMins * 60
-    parent.logWriter("[QUOTA] Quota Reset to %{state.currentSecs}")
+    parent.logWriter("[QUOTA] Quota Reset to ${state.currentSecs}")
     return
 }
