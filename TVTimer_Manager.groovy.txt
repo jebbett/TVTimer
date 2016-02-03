@@ -206,7 +206,6 @@ def meterHandler(evt) {
 	}
     else
     {
-    	logWriter("${meter} reported energy consumption above ${meterPwr} @ ${meterValue}.")
     	unschedule("stopAllQuotas")
     }
 }
