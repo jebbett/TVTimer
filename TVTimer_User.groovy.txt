@@ -19,7 +19,7 @@
  *  v0.1 - Beta semi-stable version
  *  v0.2 - Recurring quota fix attempt
  *  v0.3 - Fixed bug turning light back off
- *
+ *	v0.4 - Recurring quota fix attempt #2
  */
  
 definition(
@@ -180,8 +180,7 @@ def checkQuota() {
 	
     // Check if quota is due for a reset
     if(parent.recurringQuotaReset()){
-    	parent.logWriter ("[QUOTA] Recurring Quota Reset Checked")
-    }
+    
     
 	// Unschedule any in progress schedules
 	unschedule("checkQuota")
@@ -202,6 +201,7 @@ def checkQuota() {
     	}
     }
 	stopQuota()
+    }
 }
 
 // #################################### UPDATES QUOTA ####################################
