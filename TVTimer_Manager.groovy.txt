@@ -19,6 +19,7 @@
  *  v0.1 - Beta semi-stable version
  *  v0.2 - Recurring quota fix attempt
  * 	v0.3 - Move checking quota reset due to app, manager still re-sets other apps, changed icon provided by jgravert
+ *	v0.4 - Removed redundant code
  *
  */
 
@@ -201,18 +202,13 @@ def meterHandler(evt) {
 	def thresholdValue = meterPwr as int
 	if (meterValue < thresholdValue) {
 		logWriter("${meter} reported energy consumption below ${meterPwr} @ ${meterValue}.")
-		runIn(lowPwrOffIn, switchOffLowPwr, [overwrite: true])
+		runIn(lowPwrOffIn, stopAllQuotas, [overwrite: true])
 	}
     else
     {
     	logWriter("${meter} reported energy consumption above ${meterPwr} @ ${meterValue}.")
-    	unschedule("switchOffLowPwr")
+    	unschedule("stopAllQuotas")
     }
-}
-
-// Low power off triggered.
-def switchOffLowPwr() {
-	stopAllQuotas()	
 }
 
 // Stop all quota's on all apps
@@ -220,22 +216,17 @@ def stopAllQuotas(){
 	childApps.each { child ->
     	child.stopQuota()
     }
-	return
 }
 
 // #################################### RESET QUOTAS ####################################
 
 // Recurring Quota Reset
 def recurringQuotaReset(childApp) {
-	// Set quota checkpoint
-	
-    
     childApps.each { child ->
     	if (child.label != childLabel){
            	child.resetQuota()
         }
     }
-    
     state.lastReset = timeToday("00:00",location.timeZone).time
 }
 
