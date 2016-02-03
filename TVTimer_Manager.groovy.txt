@@ -135,7 +135,8 @@ def initialize() {
     
     // If "All Off" stop everything
     if(swOff){stopAllQuotas()}
-    state.lastReset = "145439640000"
+    
+    //state.lastReset = "145439640000" ####### UNCOMMENT TO FORCE NEW DAY - THEN PRESS DONE IN APP
 }
 
 // #################################### LOGGING ####################################
