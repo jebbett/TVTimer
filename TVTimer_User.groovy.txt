@@ -21,6 +21,7 @@
  *  v0.3 - Fixed bug turning light back off
  *	v0.4 - Recurring quota fix attempt #2
  *	v0.5 - Recurring quota - moved check from parent to child app - fix attempt #3
+ *	v0.6 - Fixed Smarthings Unschedule bug
  */
  
 definition(
@@ -153,7 +154,9 @@ def codeEntryHandler(evt){
     	parent.logWriter ("[PINPAD] Correct PIN entered - Turning On")
         parent.keypad.acknowledgeArmRequest(data)
         parent.keypad?.setArmedAway()
-        checkQuota()       
+        state.checkQ = true
+        checkQuota()
+        
     }
     else if (codeEntered == correctCode && mode== "off") {
     	parent.logWriter ("[PINPAD] Correct PIN entered - Turning Off.")
@@ -169,7 +172,10 @@ def codeEntryHandler(evt){
 
 // Check Quota on switch
 def switchOn(evt) {
-	if(evt.value == "on"){checkQuota()}
+	if(evt.value == "on"){
+    state.checkQ = true
+    checkQuota()
+    }
     else if (evt.value == "off"){stopQuota()}
 }
 
@@ -178,14 +184,16 @@ def switchOn(evt) {
 
 // Make sure both quota available and an eligable timeband is active.
 def checkQuota() {
-	
+
+	if(!state.checkQ){return}
+    
+	// Unschedule any in progress schedules
+	state.checkQ = false	//unschedule("checkQuota")
+    
     // Check to see if quota due for reset
     def thisIsToday = timeToday("00:00",location.timeZone).time as long
     def thisIsWhenDue = parent.checkQuotaReset() as long
     def resetDayz = parent.resetDays*86400000 as long
-    
-    parent.logWriter("[QUOTA] $thisIsToday , $thisIsWhenDue , $resetDayz")
-    
     
     if ((timeToday("00:00",location.timeZone).time) >= (thisIsWhenDue + resetDayz)){
     	resetQuota()
@@ -195,9 +203,8 @@ def checkQuota() {
         parent.logWriter("[QUOTA] Last Quota Reset Was: ${thisIsToday}, currently time is ${now()} next one due ${thisIsWhenDue + (parent.resetDays * 86400000)}.")
     }
         
-	// Unschedule any in progress schedules
-	unschedule("checkQuota")
-    
+    // ################################### REMOVED     state.checkQ = false	//unschedule("checkQuota")
+        
     // Update quota
     updateQuota()
     
@@ -313,9 +320,11 @@ def scheduleReCheck(timeEnd) {
     //schedule next recheck
 	if(secsToEndBand >= secsInQuota){
     	runIn(secsInQuota, checkQuota, [overwrite: true])
+        state.checkQ = true
        	parent.logWriter ("[SCHEDULE] Quota available less than time band end, so will re-check in $secsInQuota seconds.")
     }else{
     	runIn(secsToEndBand, checkQuota, [overwrite: true])
+        state.checkQ = true
     	parent.logWriter ("[SCHEDULE] Timeband will be hit before quota runs out, , so will re-check in $secsToEndBand seconds.")	
     }
 }
@@ -325,7 +334,7 @@ def scheduleReCheck(timeEnd) {
 
 def stopQuota() {
     parent.logWriter ("[STATE] Stop command sent.")
-    unschedule("checkQuota")
+    state.checkQ = false	//unschedule("checkQuota")
 	updateQuota()
     parent.switchOff()
     parent.keypad?.setDisarmed()

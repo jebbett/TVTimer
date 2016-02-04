@@ -20,6 +20,7 @@
  *  v0.2 - Recurring quota fix attempt
  * 	v0.3 - Move checking quota reset due to app, manager still re-sets other apps, changed icon provided by jgravert
  *	v0.4 - Removed redundant code
+ *	v0.5 - Fixed Smarthings Unschedule bug
  *
  */
 
@@ -135,7 +136,9 @@ def initialize() {
     }
     
     // If "All Off" stop everything
-    if(swOff){stopAllQuotas()}
+    if(swOff){
+    	state.stopQuota = true
+        stopAllQuotas()}
     
     //state.lastReset = "145439640000" //####### UNCOMMENT TO FORCE NEW DAY - THEN PRESS DONE IN APP
 }
@@ -177,19 +180,22 @@ def switchOn(childLabel) {
            	child.stopQuota()
         }
     }
-    unschedule("switchOffInX")
+    state.switchOffOk = false //unschedule("switchOffInX")
 }
 
 //Ask to switch off in 10 seconds
 def switchOff() {
 	logWriter("[OUTPUT] Switching off if not cancelled")
 	runIn(swOffIn, switchOffInX, [overwrite: true])
+    state.switchOffOk = true
 }
 
 //Actually switch off
 def switchOffInX() {
-	settings."output1"?.off()
-    logWriter("[OUTPUT] Switched turned off")
+	if(state.switchOffOk){
+	    settings."output1"?.off()
+    	logWriter("[OUTPUT] Switched turned off")
+	}
 }
 
 
@@ -203,18 +209,21 @@ def meterHandler(evt) {
 	if (meterValue < thresholdValue) {
 		logWriter("${meter} reported energy consumption below ${meterPwr} @ ${meterValue}.")
 		runIn(lowPwrOffIn, stopAllQuotas, [overwrite: true])
+        state.stopQuota = true
 	}
     else
     {
-    	unschedule("stopAllQuotas")
+    	state.stopQuota = false	//unschedule("stopAllQuotas")
     }
 }
 
 // Stop all quota's on all apps
 def stopAllQuotas(){
-	childApps.each { child ->
-    	child.stopQuota()
-    }
+	if(state.stopQuota){
+		childApps.each { child ->
+    		child.stopQuota()
+    	}
+	}
 }
 
 // #################################### RESET QUOTAS ####################################
