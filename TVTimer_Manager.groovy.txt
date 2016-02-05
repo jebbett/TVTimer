@@ -21,6 +21,8 @@
  * 	v0.3 - Move checking quota reset due to app, manager still re-sets other apps, changed icon provided by jgravert
  *	v0.4 - Removed redundant code
  *	v0.5 - Fixed Smarthings Unschedule bug
+ *	v0.6 - Fixed user switching bug, moved keypad light response to master
+ *	v0.7 - Moved test switch to debugging only, triggers user called "Test"
  *
  */
 
@@ -90,6 +92,8 @@ def settingsPage(){
             if (debugLogging) { 
             	state.debugLogging = true 
                 logWriter("Debug Logging is ${state.debugLogging.toString().toUpperCase()}")
+                paragraph "Create a user called Test and this switch will trigger activation / deactivation"
+                input "trigger1", "capability.switch", title:"TESTING ONLY", multiple: false, required: false
             }
             else { 
             	state.debugLogging = false 
@@ -155,7 +159,7 @@ private def logWriter(value) {
 // Pass test switch to all child apps - THIS CAN BE DELETED IF SWITCH REMOVED
 def childSwitch(evt) {
 childApps.each { child ->
-	if(child.label == "Jake"){child.switchOn(evt)}
+	if(child.label == "Test"){child.switchOn(evt)}
     }
 	return
 }
