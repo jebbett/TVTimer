@@ -22,6 +22,7 @@
  *	v0.4 - Recurring quota fix attempt #2
  *	v0.5 - Recurring quota - moved check from parent to child app - fix attempt #3
  *	v0.6 - Fixed Smarthings Unschedule bug
+ *	v0.7 - Fixed user switching bug & moved keypad light response to master 
  */
  
 definition(
@@ -153,7 +154,6 @@ def codeEntryHandler(evt){
     if (codeEntered == correctCode && mode== "on") {
     	parent.logWriter ("[PINPAD] Correct PIN entered - Turning On")
         parent.keypad.acknowledgeArmRequest(data)
-        parent.keypad?.setArmedAway()
         state.checkQ = true
         checkQuota()
         
@@ -162,6 +162,7 @@ def codeEntryHandler(evt){
     	parent.logWriter ("[PINPAD] Correct PIN entered - Turning Off.")
         parent.keypad.acknowledgeArmRequest(data)
         stopQuota()
+        parent.switchOff()
     }
     else
     {
@@ -176,7 +177,10 @@ def switchOn(evt) {
     state.checkQ = true
     checkQuota()
     }
-    else if (evt.value == "off"){stopQuota()}
+    else if (evt.value == "off"){
+    	stopQuota()
+        parent.switchOff()
+        }
 }
 
 
@@ -221,6 +225,7 @@ def checkQuota() {
     	}
     }
 	stopQuota()
+    parent.switchOff()
 }
 
 // #################################### UPDATES QUOTA ####################################
@@ -336,10 +341,7 @@ def stopQuota() {
     parent.logWriter ("[STATE] Stop command sent.")
     state.checkQ = false	//unschedule("checkQuota")
 	updateQuota()
-    parent.switchOff()
-    parent.keypad?.setDisarmed()
 }
-
 
 // #################################### ADHOC SCRIPTS ####################################
 

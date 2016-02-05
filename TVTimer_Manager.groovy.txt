@@ -173,6 +173,7 @@ def childCodeEntryHandler(evt){
 //Switch on and cancel any pending switch offs
 def switchOn(childLabel) {
 	settings."output1"?.on()
+    keypad?.setArmedAway()
     logWriter("[OUTPUT] Switch turned on")
     // cancel all the other child apps
     childApps.each { child ->
@@ -194,7 +195,8 @@ def switchOff() {
 def switchOffInX() {
 	if(state.switchOffOk){
 	    settings."output1"?.off()
-    	logWriter("[OUTPUT] Switched turned off")
+        keypad?.setDisarmed()
+        logWriter("[OUTPUT] Switched turned off")
 	}
 }
 
