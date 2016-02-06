@@ -22,7 +22,8 @@
  *	v0.4 - Recurring quota fix attempt #2
  *	v0.5 - Recurring quota - moved check from parent to child app - fix attempt #3
  *	v0.6 - Fixed Smarthings Unschedule bug
- *	v0.7 - Fixed user switching bug & moved keypad light response to master 
+ *	v0.7 - Fixed user switching bug, moved keypad light response to master
+ *	v0.8 - Added [ACTIVE] against active user in app balance screen.
  */
  
 definition(
@@ -67,7 +68,13 @@ def mainPage() {
      	
         section() {
                 label title: "Name", defaultValue: app.label, required: true
-                if(state.currentSecs != null){paragraph "${app.label} has about ${(state.currentSecs/60).toInteger()} minutes remaining until next reset."}
+                if(state.currentSecs != null){
+                	if(state.checkQ){
+						paragraph "${app.label} is [ACTIVE] with about ${(state.currentSecs/60).toInteger()} minutes remaining until next reset"
+    				}else{
+        				paragraph "${app.label} is [INACTIVE] with about ${(state.currentSecs/60).toInteger()} minutes remaining until next reset"
+        			}
+				}
         }
     
     section("User Settings") {
@@ -347,11 +354,22 @@ def stopQuota() {
 
 // To return quota to parent app, for phone app.
 def returnQuota () {
+
+	def avQuota = "Checking"
+
 	if(state.currentSecs != null){
-	def availableQuota = (state.currentSecs/60).toInteger()
-    return availableQuota}
-    else
-    {return 0}
+    	def availableQuotaMins = (state.currentSecs/60).toInteger()
+        
+        
+    	if(state.checkQ){
+			avQuota = "$app.label has about $availableQuotaMins minutes remaining [ACTIVE]" as String
+    	}else{
+        	avQuota = "$app.label has about $availableQuotaMins minutes remaining" as String
+        }
+        
+    return avQuota
+    
+    }else{return "$app.label has 0 minutes remaining"}
 }
 
 def resetQuota(){
