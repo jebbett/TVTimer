@@ -24,6 +24,8 @@
  *	v0.6 - Fixed user switching bug, moved keypad light response to master
  *	v0.7 - Moved test switch to debugging only, triggers user called "Test"
  *	v0.8 - Added [ACTIVE] against active user in app balance screen
+ *	v0.9 - Added Test2 user switch to allow testing of user switching
+ *	v0.10- Fix for low power bug introduced in v0.5
  *
  */
 
@@ -54,11 +56,7 @@ def mainPage() {
             input "swOff", "bool", title: "All Off", required: false, defaultValue: false, submitOnChange: true, refreshAfterSelection: true
             input "swFree", "bool", title: "Free Time", required: false, defaultValue: false, submitOnChange: true,refreshAfterSelection: true
          	
-            href(name: "usersBal",
-                 title: "Users Balance Remaining",
-                 required: false,
-                 page: "balancePage",
-                 description: "view users remaining balances")
+            href(name: "usersBal", title: "Users Balance Remaining", required: false, page: "balancePage", description: "view users remaining balances")
         }
         section(title: "Users") {}
          
@@ -71,10 +69,9 @@ def mainPage() {
 }
 
 def settingsPage(){
-	dynamicPage(name: "balancePage", install: false, uninstall: false, submitOnChange: true) {
+	dynamicPage(name: "settingsPage", install: false, uninstall: false, submitOnChange: true) {
         
 		section("Inputs") {
-        	input "trigger1", "capability.switch", title:"TESTING ONLY", multiple: false, required: false
             input "keypad", "capability.lockCodes", title: "Keypad Input", multiple: false, required: false
             input "output1", "capability.switch", title:"Switch To Control", multiple: false, required: false
             input(name: "swOffIn" , title: "Delay Switch Off (Seconds)", type: "number", range: "1..300", defaultValue: "10", required: true)
@@ -94,7 +91,8 @@ def settingsPage(){
             	state.debugLogging = true 
                 logWriter("Debug Logging is ${state.debugLogging.toString().toUpperCase()}")
                 paragraph "Create a user called Test and this switch will trigger activation / deactivation"
-                input "trigger1", "capability.switch", title:"TESTING ONLY", multiple: false, required: false
+                input "trigger1", "capability.switch", title:"[Test] User", multiple: false, required: false
+                input "trigger2", "capability.switch", title:"[Test2] User", multiple: false, required: false
             }
             else { 
             	state.debugLogging = false 
@@ -134,6 +132,7 @@ def updated() {
 
 def initialize() {
     subscribe(trigger1, "switch", childSwitch)
+    subscribe(trigger2, "switch", childSwitch2)
     subscribe(keypad, "codeEntered", childCodeEntryHandler)
     subscribe(meter, "power", meterHandler)
     
@@ -160,10 +159,17 @@ private def logWriter(value) {
 
 // #################################### INPUTS ####################################
 
-// Pass test switch to all child apps - THIS CAN BE DELETED IF SWITCH REMOVED
+// Pass test switch to "Test" child app.
 def childSwitch(evt) {
 childApps.each { child ->
 	if(child.label == "Test"){child.switchOn(evt)}
+    }
+	return
+}
+
+def childSwitch2(evt) {
+childApps.each { child ->
+	if(child.label == "Test2"){child.switchOn(evt)}
     }
 	return
 }
@@ -233,6 +239,7 @@ def stopAllQuotas(){
 		childApps.each { child ->
     		child.stopQuota()
     	}
+    switchOff()
 	}
 }
 
