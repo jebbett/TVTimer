@@ -23,7 +23,7 @@
  *	v0.5 - Recurring quota - moved check from parent to child app - fix attempt #3
  *	v0.6 - Fixed Smarthings Unschedule bug
  *	v0.7 - Fixed user switching bug, moved keypad light response to master
- *	v0.8 - Added [ACTIVE] against active user in app balance screen.
+ *	v0.8 - Added [ACTIVE] against active user in app balance screen
  */
  
 definition(

@@ -23,7 +23,7 @@
  *	v0.5 - Fixed Smarthings Unschedule bug
  *	v0.6 - Fixed user switching bug, moved keypad light response to master
  *	v0.7 - Moved test switch to debugging only, triggers user called "Test"
- *	v0.8 - Added [ACTIVE] against active user in app balance screen.
+ *	v0.8 - Added [ACTIVE] against active user in app balance screen
  *
  */
 
@@ -106,8 +106,12 @@ def settingsPage(){
 
 def balancePage(){
 	dynamicPage(name: "balancePage", install: false, uninstall: false, submitOnChange: false) {
-        
+    
+        section(){
+        	paragraph "An [ACTIVE] users balance will not be up to date and will show the value from the start of the session"
+        }
         section(title: "Balance Remaining") {
+        
         	childApps.each { child ->
                 paragraph "${child.returnQuota()}"
     		}
