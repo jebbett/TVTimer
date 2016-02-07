@@ -24,6 +24,7 @@
  *	v0.6 - Fixed Smarthings Unschedule bug
  *	v0.7 - Fixed user switching bug, moved keypad light response to master
  *	v0.8 - Added [ACTIVE] against active user in app balance screen
+ *	v0.9 - Added additional logging points
  */
  
 definition(
@@ -222,8 +223,9 @@ def checkQuota() {
     // Check if quota should start deductions
     def availableQuota = state.currentSecs.toInteger()
 	if(availableQuota > 0  && !parent.swOff){
-    	
+    parent.logWriter("[CHECK] Quota Available")	
         if(okTimeSlot()){
+        	parent.logWriter("[CHECK] Timeband OK")	
         	// Do this if ok to use quota
             state.startTimer = (now()/1000).toInteger()
             parent.switchOn(app.label)
