@@ -25,6 +25,7 @@
  *	v0.7 - Fixed user switching bug, moved keypad light response to master
  *	v0.8 - Added [ACTIVE] against active user in app balance screen
  *	v0.9 - Added additional logging points
+ *	v0.10- Updated logging reporting to include quota last reset, current time and reset due.
  */
  
 definition(
@@ -60,6 +61,8 @@ def initialize() {
     if (state.currentSecs==null){
     	resetQuota()
     }
+
+    
 }
 
 
@@ -197,22 +200,27 @@ def switchOn(evt) {
 // Make sure both quota available and an eligable timeband is active.
 def checkQuota() {
 
-	if(!state.checkQ){return}
+	// Ensure check quota request is valid, if not exit.
+    if(!state.checkQ){return}
     
 	// Unschedule any in progress schedules
 	state.checkQ = false	//unschedule("checkQuota")
     
     // Check to see if quota due for reset
-    def thisIsToday = timeToday("00:00",location.timeZone).time as long
-    def thisIsWhenDue = parent.checkQuotaReset() as long
-    def resetDayz = parent.resetDays*86400000 as long
     
-    if ((timeToday("00:00",location.timeZone).time) >= (thisIsWhenDue + resetDayz)){
+    //def timeString = new Date(unixTS+ location.timeZone.rawOffset ).format("yyyy-MM-dd HH:mm")
+    
+    def thisIsToday = timeToday("00:00",location.timeZone).time as long
+    def thisIsWhenLastReset = parent.checkQuotaReset() as long
+    def resetDayz = parent.resetDays*86400000 as long
+    def thisIsWhenDue = thisIsWhenLastReset + resetDayz as long
+    
+    if ((timeToday("00:00",location.timeZone).time) >= thisIsWhenDue){
     	resetQuota()
     	parent.recurringQuotaReset(app.label)
     	parent.logWriter("[QUOTA] Have Reset Recurring Quota")
     }else{
-        parent.logWriter("[QUOTA] Last Quota Reset Was: ${thisIsToday}, currently time is ${now()} next one due ${thisIsWhenDue + (parent.resetDays * 86400000)}.")
+        parent.logWriter("[QUOTA] Not Reset! Last Reset Was: ${new Date(thisIsToday).format("yyyy-MM-dd HH:mm")}, currently time is ${new Date(now()+ location.timeZone.rawOffset).format("yyyy-MM-dd HH:mm")} next one due ${new Date(thisIsWhenDue).format("yyyy-MM-dd HH:mm")}.")
     }
         
     // ################################### REMOVED     state.checkQ = false	//unschedule("checkQuota")
