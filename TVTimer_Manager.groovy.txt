@@ -26,7 +26,7 @@
  *	v0.8 - Added [ACTIVE] against active user in app balance screen
  *	v0.9 - Added Test2 user switch to allow testing of user switching
  *	v0.10- Fix for low power bug introduced in v0.5
- *
+ *	v0.11- Updated in app reporting of last and next reset under "Balance Remaining" screen.
  */
 
 definition(
@@ -108,10 +108,16 @@ def balancePage(){
         section(){
         	paragraph "An [ACTIVE] users balance will not be up to date and will show the value from the start of the session"
         }
+        
+        section(title: "Quota Reset") {
+        	paragraph " Last Reset: ${new Date(checkQuotaReset()).format("yyyy-MM-dd HH:mm")}"
+        	paragraph " Next Reset: ${new Date(checkQuotaReset()+ (resetDays*86400000)).format("yyyy-MM-dd HH:mm")}"
+        }
+        
         section(title: "Balance Remaining") {
         
         	childApps.each { child ->
-                paragraph "${child.returnQuota()}"
+                paragraph " ${child.returnQuota()}"
     		}
 		}
 	}
@@ -146,6 +152,12 @@ def initialize() {
     if(swOff){
     	state.stopQuota = true
         stopAllQuotas()}
+        
+    // JUST FOR TESTING    
+    // def thisIsToday = timeToday("00:00",location.timeZone).time as long
+    // def timeString = new Date(thisIsToday+ location.timeZone.rawOffset).format("yyyy-MM-dd HH:mm")
+    // log.debug "[TESTING1] Last Quota Reset Was: ${timeString}"
+    // log.debug "[TESTING2] Last Quota Reset Was: ${new Date(thisIsToday+ location.timeZone.rawOffset).format("yyyy-MM-dd HH:mm")}"
     
     //state.lastReset = "145439640000" //####### UNCOMMENT TO FORCE NEW DAY - THEN PRESS DONE IN APP
 }
